@@ -1,10 +1,5 @@
-import os
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
-
-from flask import Flask, request, jsonify
 from transformers import pipeline
-
-app = Flask(__name__)
+import json
 
 bloom_pipeline = pipeline(
     'text-generation',
@@ -12,11 +7,23 @@ bloom_pipeline = pipeline(
     tokenizer='bigscience/bloom'
 )
 
-@app.route('/generate_text', methods=['POST'])
-def generate_text():
-    prompt = request.json['prompt']
-    output = bloom_pipeline(prompt, max_length=100)
-    return jsonify({'generated_text': output[0]['generated_text']})
-
-if __name__ == '__main__':
-    app.run()
+def lambda_handler(event, context):
+    if 'body' in event:
+        body = json.loads(event['body'])
+        prompt = body['prompt']
+        output = bloom_pipeline(prompt, max_length=100)
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "body": json.dumps({"generated_text": output[0]['generated_text']})
+        }
+    else:
+        return {
+            "statusCode": 400,
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "body": json.dumps({"message": "Request body not found"})
+        }
